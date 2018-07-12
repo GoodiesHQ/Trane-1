@@ -1,20 +1,23 @@
 TARGET=trane
-CXX=g++ -c
-LD=g++ -o
+CXX=g++
 RM=rm -f
-CPPFLAGS=-Wall -std=c++14 -lpthread
-LFLAGS=-Wall -lpthread 
-SOURCES:=$(wildcard src/*.cpp)
+CPPFLAGS=-Wall -std=c++14 -pthread -I./inc -Os -fdata-sections -ffunction-sections -Wl,--gc-sections
+SOURCES_SERVER=./src/server.cpp
+SOURCES_CLIENT=./src/client.cpp
 INCLUDES:=$(wildcard inc/*.hpp)
-OBJECTS:=$(SOURCES:.c=*.o)
 
 $(TARGET): obj
 	@$(LD) $(TARGET) $(LFLAGS) $(OBJECTS)
 	@echo "Link Complete"
 
-obj: $(SOURCES)
-	@$(CXX) $(CPPFLAGS) $(SOURCES)
+obj: client server
 	@echo "Compile Complete"
+
+client: $(SOURCES_CLIENT)
+	$(CXX) $(SOURCES_CLIENT) $(CPPFLAGS) -o $(TARGET)_client
+
+server: $(SOURCES_SERVER)
+	$(CXX) $(SOURCES_SERVER) $(CPPFLAGS) -o $(TARGET)_server
 
 # clean:
 # @echo "Clean Complete"

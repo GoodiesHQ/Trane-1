@@ -1,97 +1,101 @@
 #ifndef TRANE_SESSION_HPP
 #define TRANE_SESSION_HPP
 #include "asio_standalone.hpp"
+#include "commands.hpp"
+#include "connection.hpp"
+#include "utils.hpp"
+
+#include <msgpack.hpp>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <functional>
 #include <array>
 #include <iostream>
 
+#define NOP(x) (void)(x);
+
 namespace trane
 {
-    template <size_t BufSize = 1024>
-    class Session
+    /*
+     * A session object represents a single connection from a Trane Client to a Trane Server
+     */
+    template <size_t BufSize = TRANE_BUFSIZE>
+    class Session : public Connection<BufSize>
     {
-        typedef std::function<void(uint64_t)> ErrorHandler;
+        using ErrorHandler = typename Connection<BufSize>::ErrorHandler;
 
     public:
         Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler error_handler);
-
         void start();
-        void handle_read(const asio::error_code& err, size_t bytes_transferred);
-        void handle_write(const asio::error_code& err);
-        void set_session_id(uint64_t sessionid);
-        const tcp::socket& socket();
+        void after_cmd();
+        void add_request(const ParamTunnelReq& param);
 
     protected:
-        tcp::socket m_socket;
-        uint64_t m_sessionid;
-        ErrorHandler m_eh;
-        std::array<char, BufSize> m_data;
+        void handle_cmd_connect(const msgpack::object& obj);
+        void handle_cmd_ping(const msgpack::object& obj);
+
+    private:
+        std::deque<ParamTunnelReq> m_requests;
+        std::mutex m_requests_mu;
     };
 }
 
 template<size_t BufSize>
-trane::Session<BufSize>::Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler error_handler)
-    : m_socket{ios}, m_sessionid{sessionid}, m_eh{error_handler}
+void trane::Session<BufSize>::after_cmd()
+{
+    {
+        SCOPELOCK(m_requests_mu);
+        while(!m_requests.empty())
+        {
+            const auto& param = m_requests.front();
+            this->send_cmd_tunnel_req(P0(param), P1(param), P2(param), P3(param), P4(param));
+            m_requests.pop_front();
+        }
+    }
+}
+
+
+template<size_t BufSize>
+void trane::Session<BufSize>::add_request(const ParamTunnelReq& param)
+{
+    SCOPELOCK(m_requests_mu);
+    m_requests.push_back(param);
+}
+
+
+template<size_t BufSize>
+void trane::Session<BufSize>::handle_cmd_connect(const msgpack::object& obj)
+{
+    ParamConnect param;
+    obj.convert(param);
+
+    this->set_state(CONNECTED);
+    std::cout << "Server Accepts Site '" << P0(param) << "'. Assigning ID " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid << '\n';
+    this->send_cmd_assign(this->m_sessionid);
+}
+
+template<size_t BufSize>
+void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
+{
+    ParamPing param;
+    obj.convert(param);
+    auto& ping = P0(param);
+
+    std::cout << "Server Received PING(" << ping << ")\n";
+    this->send_cmd_pong("PONG");
+}
+
+template<size_t BufSize>
+trane::Session<BufSize>::Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler eh)
+    : Connection<BufSize>(ios, sessionid, eh)
 { }
 
 template<size_t BufSize>
 void trane::Session<BufSize>::start()
 {
-    m_socket.async_read_some(
-        asio::buffer(m_data, BufSize),
-        std::bind(&Session<BufSize>::handle_read, this, std::placeholders::_1, std::placeholders::_2)
-    );
-}
+    this->do_read();
+};
 
-template<size_t BufSize>
-void trane::Session<BufSize>::handle_read(const asio::error_code& err, size_t bytes_transferred)
-{
-    if(err)
-    {
-        std::cout << "Socket read error: " << err.message() << '\n';
-        m_eh(m_sessionid);
-    }
-    else
-    {
-        std::cout << "Received " << bytes_transferred << " bytes.\n";
-        asio::async_write(
-            m_socket,
-            asio::buffer(m_data, bytes_transferred),
-            std::bind(&Session<BufSize>::handle_write, this, std::placeholders::_1)
-        );
-    }
-}
-
-template<size_t BufSize>
-void trane::Session<BufSize>::handle_write(const asio::error_code& err)
-{
-    if(err)
-    {
-        std::cout << err << std::endl;
-        std::cout << "Socket write error: " << err.message() << '\n';
-        m_eh(m_sessionid);
-        std::cout << "OK\n";
-    }
-    else
-    {
-        m_socket.async_read_some(
-            asio::buffer(m_data, BufSize),
-            std::bind(&Session<BufSize>::handle_read, this, std::placeholders::_1, std::placeholders::_2)
-        );
-    }
-}
-
-template<size_t BufSize>
-void trane::Session<BufSize>::set_session_id(uint64_t sessionid)
-{
-    m_sessionid = sessionid;
-}
-
-template<size_t BufSize>
-const tcp::socket& trane::Session<BufSize>::socket()
-{
-    return m_socket;
-}
 
 #endif
 

@@ -1,3 +1,6 @@
+#ifndef TRANE_RESOLVER_HPP
+#define TRANE_RESOLVER_HPP
+
 #include "asio_standalone.hpp"
 #include <string>
 #include <functional>
@@ -13,11 +16,11 @@ namespace trane
         typedef std::function<void(const asio::error_code& ec, typename Proto::resolver::iterator)> Callback;
         Resolver(asio::io_service& ios);
         virtual void resolve(const std::string& host, const std::string& port, Callback callback);
+        virtual void resolve(const std::string& host, uint16_t port, Callback callback);
 
     private:
         typename Proto::resolver m_resolver;
     };
-
 }
 
 
@@ -32,3 +35,11 @@ void trane::Resolver<Proto>::resolve(const std::string& host, const std::string&
 {
     m_resolver.async_resolve(host, port, callback);
 }
+
+template<typename Proto>
+void trane::Resolver<Proto>::resolve(const std::string& host, uint16_t port, Callback callback)
+{
+    resolve(host, std::to_string(port), callback);
+}
+
+#endif
