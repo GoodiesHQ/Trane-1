@@ -1,7 +1,8 @@
 TARGET=trane
 CXX=g++
 RM=rm -f
-CPPFLAGS=-Wall -std=c++14 -pthread -I./inc -Os -fdata-sections -ffunction-sections -Wl,--gc-sections
+# CPPFLAGS=-Wall -std=c++14 -pthread -I./inc -I/usr/include -I/usr/local/include -Os -fdata-sections -ffunction-sections -Wl,--gc-sections
+CPPFLAGS=-Wall -std=c++14 -pthread -I./inc -I/usr/include -I/usr/local/include -O0
 SOURCES_SERVER=./src/server.cpp
 SOURCES_CLIENT=./src/client.cpp
 INCLUDES:=$(wildcard inc/*.hpp)

@@ -15,11 +15,11 @@ void onerror(uint64_t sessionid)
 
 int main(int argc, char **argv)
 {
-    unsigned short port{49999};
+    unsigned short port{39999};
 
     if(argc != 3 && argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <Site Name> <Server Hostname/IP> [port=49999]\n\n";
+        std::cerr << "Usage: " << argv[0] << " <Site Name> <Server Hostname/IP> [port=39999]\n\n";
         return 1;
     }
 

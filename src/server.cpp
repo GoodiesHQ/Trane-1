@@ -4,8 +4,11 @@ void foo(const trane::Server& server)
 {
     const auto& sessions = server.sessions();
     std::for_each(sessions.begin(), sessions.end(), [](const std::pair<unsigned int, std::shared_ptr<trane::Session<>>>& entry){
-        std::cout << "Session " << std::setw(16) << std::setfill('0') << entry.first << ":\n";
-        entry.second->add_request(std::make_tuple("127.0.0.1", 1234, "127.0.0.1", 4321, 0x1122334455667788ULL));
+        if(entry.second->state() == trane::ConnectionState::CONNECTED)
+        {
+            std::cout << "Session " << std::setw(16) << std::setfill('0') << std::hex << entry.first << ":\n";
+            entry.second->add_request(std::make_tuple("127.0.0.1", 1234, "127.0.0.1", 4321, 0x1122334455667788ULL));
+        }
     });
 }
 
@@ -29,8 +32,14 @@ int main(int argc, char **argv)
         ios.run();
     });
 
-    std::this_thread::sleep_for(SEC(30));
-    foo(server);
+    while(1)
+    {
+        std::cout << "Press enter to create tunnel requests.";
+        std::cout.flush();
+        std::cin.ignore();
+        foo(server);
+    }
+
     t.join();
 
     return 0;

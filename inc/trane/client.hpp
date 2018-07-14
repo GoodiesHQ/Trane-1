@@ -32,6 +32,7 @@ namespace trane
          */
         void handle_cmd_assign(const msgpack::object& obj);
         void handle_cmd_pong(const msgpack::object& obj);
+        void handle_cmd_tunnel_req(const msgpack::object& obj);
 
         asio::steady_timer m_heartbeat_timer;   // timer for executing PING commands for heartbeats
         trane::Resolver<tcp> m_resolver;        // a DNS resolver for creating TCP endpoints
@@ -39,6 +40,7 @@ namespace trane
         unsigned short m_port;
     };
 }
+
 
 template<size_t BufSize>
 void trane::Client<BufSize>::handle_cmd_assign(const msgpack::object& obj)
@@ -48,6 +50,7 @@ void trane::Client<BufSize>::handle_cmd_assign(const msgpack::object& obj)
 
     this->set_sessionid(std::get<0>(param));
     std::cout << "Client received ID " << std::setfill('0') << std::setw(16) << std::hex << this->sessionid() << '\n';
+    this->send_cmd_ping("PING");
 }
 
 
@@ -74,6 +77,18 @@ void trane::Client<BufSize>::handle_cmd_pong(const msgpack::object& obj)
                 this->send_cmd_ping("PING");
             }
         });
+}
+
+
+template<size_t BufSize>
+void trane::Client<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj)
+{
+    ParamTunnelReq param;
+    obj.convert(param);
+
+    std::cout << "Creating connection to " << P0(param) << ':' << P1(param)
+        << " proxying to " << P2(param) << ':' << P3(param)
+        << " with ID " << std::setw(16) << std::setfill('0') << std::hex << P4(param) << std::endl;
 }
 
 
@@ -113,7 +128,8 @@ void trane::Client<BufSize>::handle_connect(const asio::error_code& err)
         this->handle_error(err);
         return;
     }
-    this->send_cmd_ping("PING");
+    //this->send_cmd_ping("PING");
+    this->send_cmd_connect(this->m_name);
     this->do_read();
 }
 

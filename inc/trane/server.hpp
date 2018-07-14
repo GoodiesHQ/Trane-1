@@ -1,5 +1,6 @@
 #ifndef TRANE_SERVER_HPP
 #define TRANE_SERVER_HPP
+
 #include "utils.hpp"
 #include "asio_standalone.hpp"
 #include "session.hpp"

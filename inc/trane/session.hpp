@@ -1,5 +1,6 @@
 #ifndef TRANE_SESSION_HPP
 #define TRANE_SESSION_HPP
+
 #include "asio_standalone.hpp"
 #include "commands.hpp"
 #include "connection.hpp"
@@ -29,12 +30,14 @@ namespace trane
         void start();
         void after_cmd();
         void add_request(const ParamTunnelReq& param);
+        void check_tasks(const asio::error_code& timer_err);
 
     protected:
         void handle_cmd_connect(const msgpack::object& obj);
         void handle_cmd_ping(const msgpack::object& obj);
 
     private:
+        asio::steady_timer m_task_timer;
         std::deque<ParamTunnelReq> m_requests;
         std::mutex m_requests_mu;
     };
@@ -43,6 +46,17 @@ namespace trane
 template<size_t BufSize>
 void trane::Session<BufSize>::after_cmd()
 {
+}
+
+template<size_t BufSize>
+void trane::Session<BufSize>::check_tasks(const asio::error_code& timer_err)
+{
+    if(timer_err)
+    {
+        std::cerr << "Timer Error: " << timer_err.message() << std::endl;
+    }
+
+    if(this->state() == trane::ConnectionState::CONNECTED)
     {
         SCOPELOCK(m_requests_mu);
         while(!m_requests.empty())
@@ -52,6 +66,12 @@ void trane::Session<BufSize>::after_cmd()
             m_requests.pop_front();
         }
     }
+    m_task_timer.expires_from_now(MSEC(250));
+    m_task_timer.async_wait(
+        [this](const asio::error_code& err){
+            this->check_tasks(err);
+        }
+    );
 }
 
 
@@ -72,6 +92,7 @@ void trane::Session<BufSize>::handle_cmd_connect(const msgpack::object& obj)
     this->set_state(CONNECTED);
     std::cout << "Server Accepts Site '" << P0(param) << "'. Assigning ID " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid << '\n';
     this->send_cmd_assign(this->m_sessionid);
+    this->check_tasks(asio::error_code());
 }
 
 template<size_t BufSize>
@@ -87,7 +108,7 @@ void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
 
 template<size_t BufSize>
 trane::Session<BufSize>::Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler eh)
-    : Connection<BufSize>(ios, sessionid, eh)
+    : Connection<BufSize>(ios, sessionid, eh), m_task_timer{ios}
 { }
 
 template<size_t BufSize>
