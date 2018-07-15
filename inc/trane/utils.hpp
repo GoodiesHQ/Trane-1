@@ -8,6 +8,7 @@
 
 #define SCOPELOCK(mu) std::lock_guard<std::mutex> __lock(mu)
 #define TRANE_BUFSIZE 32 * 1024
+#define NOP(x) (void)(x);
 
 #define SEC(x)  std::chrono::seconds(x)
 #define MSEC(x) std::chrono::milliseconds(x)

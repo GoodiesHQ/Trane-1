@@ -13,8 +13,6 @@
 #include <array>
 #include <iostream>
 
-#define NOP(x) (void)(x);
-
 namespace trane
 {
     /*
