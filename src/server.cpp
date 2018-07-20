@@ -1,13 +1,15 @@
 #include "../inc/trane.hpp"
 
-void foo(const trane::Server& server)
+template<size_t BufSize>
+void foo(const trane::Server<BufSize>& server)
 {
     const auto& sessions = server.sessions();
-    std::for_each(sessions.begin(), sessions.end(), [](const std::pair<unsigned int, std::shared_ptr<trane::Session<>>>& entry){
+    std::for_each(sessions.entries().begin(), sessions.entries().end(), [](const std::pair<unsigned int, std::shared_ptr<trane::Session<>>>& entry){
         if(entry.second->state() == trane::ConnectionState::CONNECTED)
         {
             std::cout << "Session " << std::setw(16) << std::setfill('0') << std::hex << entry.first << ":\n";
-            entry.second->add_request(std::make_tuple("127.0.0.1", 1234, "127.0.0.1", 4321, 0x1122334455667788ULL));
+            auto trane_server = asio::ip::address::from_string("127.0.0.1");
+            entry.second->create_tunnel(trane_server, trane::TraneType::TCP, "localhost", 22);
         }
     });
 }
@@ -15,7 +17,7 @@ void foo(const trane::Server& server)
 
 int main(int argc, char **argv)
 {
-    unsigned short port = 49999;
+    unsigned short port = 39999;
 
     if(argc >= 2)
     {
@@ -24,7 +26,9 @@ int main(int argc, char **argv)
     }
 
     asio::io_service ios;
-    trane::Server server(ios, 49999);
+    std::cout << "A\n";
+    trane::Server<TRANE_BUFSIZE> server(ios, port);
+    std::cout << "B\n";
 
     std::cout << "Starting Trane Server on 0.0.0.0:" << port << "\n";
 

@@ -1,10 +1,12 @@
 #ifndef TRANE_CLIENT_HPP
 #define TRANE_CLIENT_HPP
 #include "asio_standalone.hpp"
-#include "resolver.hpp"
+#include "client_proxy.hpp"
 #include "commands.hpp"
-#include "utils.hpp"
 #include "connection.hpp"
+#include "container.hpp"
+#include "resolver.hpp"
+#include "utils.hpp"
 
 #include <msgpack.hpp>
 #include <iostream>
@@ -25,6 +27,7 @@ namespace trane
         void start();
 
     protected:
+
         void handle_connect(const asio::error_code& err);
 
         /*
@@ -38,6 +41,10 @@ namespace trane
         trane::Resolver<tcp> m_resolver;        // a DNS resolver for creating TCP endpoints
         std::string m_name, m_host;             // store the client's site name and remote host/port
         unsigned short m_port;
+
+    private:
+        Container<ClientProxy<tcp, BufSize>> m_tcp_tunnels;
+        // Container<ClientProxy<udp, BufSize>> m_udp_tunnels;
     };
 }
 
@@ -75,20 +82,33 @@ void trane::Client<BufSize>::handle_cmd_pong(const msgpack::object& obj)
             else
             {
                 this->send_cmd_ping("PING");
+
             }
-        });
+        }
+    );
 }
 
 
+//using ParamTunnelReq = std::tuple<std::string, uint16_t, std::string, uint16_t, unsigned char, uint64_t>;
 template<size_t BufSize>
 void trane::Client<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj)
 {
     ParamTunnelReq param;
     obj.convert(param);
 
+    if(P4(param) == TraneType::TCP)
+        {
     std::cout << "Creating connection to " << P0(param) << ':' << P1(param)
         << " proxying to " << P2(param) << ':' << P3(param)
         << " with ID " << std::setw(16) << std::setfill('0') << std::hex << P4(param) << std::endl;
+
+        auto trane_server = tcp::endpoint(asio::ip::address::from_string(P0(param)), P1(param));
+        auto tunnel = std::make_shared<ClientProxy<tcp, BufSize>>(this->m_ios, trane_server, P2(param), P3(param));
+        uint64_t id = m_tcp_tunnels.add(tunnel);
+        tunnel->set_tunnelid(id);
+        tunnel->set_sessionid(this->m_sessionid);
+        tunnel->start();
+    }
 }
 
 

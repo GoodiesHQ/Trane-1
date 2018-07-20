@@ -4,8 +4,10 @@
 #include "asio_standalone.hpp"
 #include "commands.hpp"
 #include "connection.hpp"
-#include "utils.hpp"
+#include "container.hpp"
+#include "server_proxy.hpp"
 
+#include <random>
 #include <msgpack.hpp>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -26,58 +28,86 @@ namespace trane
     public:
         Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler error_handler);
         void start();
-        void after_cmd();
-        void add_request(const ParamTunnelReq& param);
-        void check_tasks(const asio::error_code& timer_err);
+        void create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, unsigned short client_port);
 
     protected:
+        /*
+         * Send a request to the client to establish a new tunnel
+         */
+        void send_request(const ParamTunnelReq& param);
+
+        /*
+         * Generating tunnels (max_retries = the maximum number of random ports to check before returning with an error
+         */
+        std::shared_ptr<ServerProxy<tcp, BufSize>> gen_tcp_tunnel(uint64_t& id, int max_retries=25);
+        std::shared_ptr<ServerProxy<tcp, BufSize>> gen_udp_tunnel(uint64_t& id, int max_retries=25);
+
+        /*
+         * Handle server-side commands
+         */
         void handle_cmd_connect(const msgpack::object& obj);
         void handle_cmd_ping(const msgpack::object& obj);
 
     private:
-        asio::steady_timer m_task_timer;
-        std::deque<ParamTunnelReq> m_requests;
-        std::mutex m_requests_mu;
+        Container<ServerProxy<tcp, BufSize>> m_tcp_tunnels;
+        // Container<ServerProxy<udp, BufSize>> m_udp_tunnels;
     };
 }
 
-template<size_t BufSize>
-void trane::Session<BufSize>::after_cmd()
-{
-}
+
+/*
+ * TODO: FINISH THIS
+ */
 
 template<size_t BufSize>
-void trane::Session<BufSize>::check_tasks(const asio::error_code& timer_err)
+std::shared_ptr<trane::ServerProxy<tcp, BufSize>> trane::Session<BufSize>::gen_tcp_tunnel(uint64_t& id, int max_retries)
 {
-    if(timer_err)
-    {
-        std::cerr << "Timer Error: " << timer_err.message() << std::endl;
-    }
+    unsigned short port1 = 0, port2 = 0;
 
-    if(this->state() == trane::ConnectionState::CONNECTED)
+    for(int i = 0; i < max_retries; ++i)
     {
-        SCOPELOCK(m_requests_mu);
-        while(!m_requests.empty())
+        auto& random = m_tcp_tunnels.random();
+        port1 = port1 ? port1 : random.template randrange<unsigned short>(TRANE_ADMIN_PORT_BEGIN, TRANE_ADMIN_PORT_END);
+        port2 = port2 ? port2 : random.template randrange<unsigned short>(TRANE_CLIENT_PORT_BEGIN, TRANE_CLIENT_PORT_END);
+        try
         {
-            const auto& param = m_requests.front();
-            this->send_cmd_tunnel_req(P0(param), P1(param), P2(param), P3(param), P4(param));
-            m_requests.pop_front();
+            auto tunnel = std::make_shared<trane::ServerProxy<tcp, BufSize>>(this->m_ios, port1, port2);
+            id = m_tcp_tunnels.add(tunnel);
+            tunnel->set_tunnelid(id);
+            return tunnel;
+        }
+        catch(asio::system_error& err)
+        {
+            // TODO: determine offending port so we don't re-generate both.
+            port1 = 0;
+            port2 = 0;
+            continue;
         }
     }
-    m_task_timer.expires_from_now(MSEC(250));
-    m_task_timer.async_wait(
-        [this](const asio::error_code& err){
-            this->check_tasks(err);
-        }
-    );
+    return nullptr;
 }
 
 
+        /*
+         * void send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
+                                 const std::string& host_client, unsigned short port_client,
+                                 unsigned char trane_type, uint64_t tunnelid);
+         */
+
 template<size_t BufSize>
-void trane::Session<BufSize>::add_request(const ParamTunnelReq& param)
+void trane::Session<BufSize>::create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, unsigned short client_port)
 {
-    SCOPELOCK(m_requests_mu);
-    m_requests.push_back(param);
+    if(trane_type == TraneType::TCP)
+    {
+        uint64_t tunnelid;
+        auto tunnel = this->gen_tcp_tunnel(tunnelid);
+        if(tunnel == nullptr)
+        {
+            std::cerr << "Could not create TCP tunnel\n";
+            return;
+        }
+        this->send_cmd_tunnel_req(trane_server.to_string(), tunnel->port_up(), client_host, client_port, static_cast<unsigned char>(trane_type), tunnelid);
+    }
 }
 
 
@@ -90,8 +120,8 @@ void trane::Session<BufSize>::handle_cmd_connect(const msgpack::object& obj)
     this->set_state(CONNECTED);
     std::cout << "Server Accepts Site '" << P0(param) << "'. Assigning ID " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid << '\n';
     this->send_cmd_assign(this->m_sessionid);
-    this->check_tasks(asio::error_code());
 }
+
 
 template<size_t BufSize>
 void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
@@ -104,10 +134,12 @@ void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
     this->send_cmd_pong("PONG");
 }
 
+
 template<size_t BufSize>
 trane::Session<BufSize>::Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler eh)
-    : Connection<BufSize>(ios, sessionid, eh), m_task_timer{ios}
+    : Connection<BufSize>(ios, sessionid, eh)
 { }
+
 
 template<size_t BufSize>
 void trane::Session<BufSize>::start()

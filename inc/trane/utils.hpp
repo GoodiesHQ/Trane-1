@@ -23,7 +23,33 @@
 #define P5(x) std::get<5>(x)
 
 namespace trane {
+    const unsigned TRANE_ADMIN_PORT_BEGIN = 40000;
+    const unsigned TRANE_ADMIN_PORT_END = 49999;
+
+    const unsigned TRANE_CLIENT_PORT_BEGIN = 50000;
+    const unsigned TRANE_CLIENT_PORT_END = 59999;
+
+    static_assert(TRANE_ADMIN_PORT_END - TRANE_ADMIN_PORT_BEGIN == TRANE_CLIENT_PORT_END - TRANE_CLIENT_PORT_BEGIN, "Admin and Client Ports Must Support the Same Number of Connections");
+
     using buf_t = msgpack::sbuffer;
+
+    /*
+     * Define packet types
+     */
+    enum TraneCommand : unsigned char {
+        CONNECT,        // Client has initially connected. Provide the site name and other info.
+        ASSIGN,         // Server acknowledges the client and provides it with an ID to use on subsequent messages
+        PING,           // Heartbeat request sent by client
+        PONG,           // Heartbeat response sent by Server
+        TUNNEL_REQ,     // Create a Trane Tunnel request
+        TUNNEL_RES,     // Tunnel creation response
+    };
+
+    enum TraneType : unsigned char {
+        TCP,            // a single connection mapped to a single trane tunnel
+        UDP,            // any request sent from a machine will reply to that same machine.
+    };
+
 }
 
 #endif

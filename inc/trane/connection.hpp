@@ -55,12 +55,11 @@ namespace trane
         void send_cmd_pong(const std::string& message);
         void send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
                                  const std::string& host_client, unsigned short port_client,
-                                 uint64_t tunnelid);
+                                 unsigned char trane_type, uint64_t tunnelid);
         void send_cmd_tunnel_res(uint64_t tunnelid, bool success, const std::string& message);
 
         // reserve unpacker buffer and async read.
         virtual void do_read();
-        virtual void after_cmd();
 
         // get a const ref to the internal socket
         const tcp::socket& socket() const;
@@ -68,11 +67,11 @@ namespace trane
         // get state
         ConnectionState state() const;
         uint64_t sessionid() const;
+        void set_sessionid(uint64_t sessionid);
 
 
     protected:
         void set_state(ConnectionState state);
-        void set_sessionid(uint64_t sessionid);
 
         asio::io_service& m_ios;
         tcp::socket m_socket;
@@ -175,11 +174,8 @@ void trane::Connection<BufSize>::handle_read(const asio::error_code& err, size_t
         }
     }
     this->do_read();
-    this->after_cmd();
 }
 
-template<size_t BufSize>
-void trane::Connection<BufSize>::after_cmd(){};
 
 template<size_t BufSize>
 trane::ConnectionState trane::Connection<BufSize>::state() const
@@ -187,6 +183,7 @@ trane::ConnectionState trane::Connection<BufSize>::state() const
     SCOPELOCK(m_mu);
     return m_state;
 }
+
 
 template<size_t BufSize>
 void trane::Connection<BufSize>::set_state(ConnectionState state)
@@ -213,23 +210,29 @@ void trane::Connection<BufSize>::set_sessionid(uint64_t sessionid)
  * Default handlers do nothing with the object and schedule no async events.
  */
 
-template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_connect(const msgpack::object& obj) { (void)obj; }
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_assign(const msgpack::object& obj) { (void)obj; }
+void trane::Connection<BufSize>::handle_cmd_connect(const msgpack::object& obj) { NOP(obj); }
+
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_ping(const msgpack::object& obj) { (void)obj; }
+void trane::Connection<BufSize>::handle_cmd_assign(const msgpack::object& obj) { NOP(obj); }
+
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_pong(const msgpack::object& obj) { (void)obj; }
+void trane::Connection<BufSize>::handle_cmd_ping(const msgpack::object& obj) { NOP(obj); }
+
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj) { (void)obj; }
+void trane::Connection<BufSize>::handle_cmd_pong(const msgpack::object& obj) { NOP(obj); }
+
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::handle_cmd_tunnel_res(const msgpack::object& obj) { (void)obj; }
+void trane::Connection<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj) { NOP(obj); }
+
+
+template<size_t BufSize>
+void trane::Connection<BufSize>::handle_cmd_tunnel_res(const msgpack::object& obj) { NOP(obj); }
 
 
 template<size_t BufSize>
@@ -276,9 +279,9 @@ void trane::Connection<BufSize>::send_cmd_pong(const std::string& message) {
 template<size_t BufSize>
 void trane::Connection<BufSize>::send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
                                                      const std::string& host_client, unsigned short port_client,
-                                                     uint64_t tunnelid)
+                                                     unsigned char trane_type, uint64_t tunnelid)
 {
-    this->send_cmd(cmd_tunnel_req, host_server, port_server, host_client, port_client, tunnelid);
+    this->send_cmd(cmd_tunnel_req, host_server, port_server, host_client, port_client, trane_type, tunnelid);
 }
 
 template<size_t BufSize>
