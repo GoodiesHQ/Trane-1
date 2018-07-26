@@ -3,7 +3,7 @@
 #include "../inc/trane/server.hpp"
 
 #ifdef _DEBUG
-LogLevel LOGLEVEL = VERBOSE;
+LogLevel LOGLEVEL = INFO;
 #else
 LogLevel LOGLEVEL = ERROR;
 #endif
