@@ -23,7 +23,7 @@ namespace trane
         using ErrorHandler = typename Connection<BufSize>::ErrorHandler;
 
     public:
-        Client(asio::io_service& ios, const std::string& name, const std::string& host, unsigned short port, ErrorHandler eh);
+        Client(asio::io_service& ios, const std::string& name, const std::string& host, uint16_t port, ErrorHandler eh);
         void start();
 
     protected:
@@ -40,7 +40,7 @@ namespace trane
         asio::steady_timer m_heartbeat_timer;   // timer for executing PING commands for heartbeats
         trane::Resolver<tcp> m_resolver;        // a DNS resolver for creating TCP endpoints
         std::string m_name, m_host;             // store the client's site name and remote host/port
-        unsigned short m_port;
+        uint16_t m_port;
 
     private:
         Container<ClientProxy<tcp, BufSize>> m_tcp_tunnels;
@@ -56,7 +56,7 @@ void trane::Client<BufSize>::handle_cmd_assign(const msgpack::object& obj)
     obj.convert(param);
 
     this->set_sessionid(std::get<0>(param));
-    LOG(DEBUG) << "Client received " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid;
+    LOG(INFO) << "Client received " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid;
     this->send_cmd_ping("PING");
 }
 
@@ -104,7 +104,7 @@ void trane::Client<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj)
         tunnel->set_tunnelid(id);
         tunnel->set_sessionid(this->m_sessionid);
 
-        LOG(DEBUG) << "Up: " << P0(param) << ':' << P1(param) << " ~ Down: " << P2(param) << ':' << P3(param)
+        LOG(INFO) << "Tunnel Request: Up: " << P0(param) << ':' << P1(param) << " ~ Down: " << P2(param) << ':' << P3(param)
             << " with ID " << std::setfill('0') << std::setw(16) << std::hex << P5(param);
 
         tunnel->start();
@@ -113,7 +113,7 @@ void trane::Client<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj)
 
 
 template<size_t BufSize>
-trane::Client<BufSize>::Client(asio::io_service& ios, const std::string& name, const std::string& host, unsigned short port, ErrorHandler eh)
+trane::Client<BufSize>::Client(asio::io_service& ios, const std::string& name, const std::string& host, uint16_t port, ErrorHandler eh)
     : Connection<TRANE_BUFSIZE>(ios, 0, eh), m_heartbeat_timer{ios}, m_resolver{ios}, m_name{name}, m_host{host}, m_port{port}
 { }
 

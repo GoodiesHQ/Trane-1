@@ -19,19 +19,19 @@ namespace trane
     {
     public:
         // All we need are two ports. One for the admin (dn) and the ClientProxy (up)
-        ServerProxy(asio::io_service& ios, unsigned short port_dn, unsigned short port_up);
+        ServerProxy(asio::io_service& ios, uint16_t port_dn, uint16_t port_up);
         ~ServerProxy();
         virtual void listen();
 
-        unsigned short port_up() const;
-        unsigned short port_dn() const;
+        uint16_t port_up() const;
+        uint16_t port_dn() const;
 
     protected:
         virtual void handle_up_accept(const asio::error_code& err);
         virtual void handle_dn_accept(const asio::error_code& err);
 
         uint64_t m_tunnelid;
-        unsigned short m_port_dn, m_port_up;
+        uint16_t m_port_dn, m_port_up;
         tcp::acceptor m_acc_up;
         typename Proto::acceptor m_acc_dn;
         asio::ip::address m_host_dn, m_host_up;
@@ -45,7 +45,7 @@ namespace trane
 
 
 template<typename Proto, size_t BufSize>
-trane::ServerProxy<Proto, BufSize>::ServerProxy(asio::io_service& ios, unsigned short port_dn, unsigned short port_up)
+trane::ServerProxy<Proto, BufSize>::ServerProxy(asio::io_service& ios, uint16_t port_dn, uint16_t port_up)
     : trane::Proxy<Proto, BufSize>::Proxy(ios), m_port_dn{port_dn}, m_port_up{port_up},
     m_acc_up{ios, tcp::endpoint(tcp::v4(), port_up)}, m_acc_dn{ios, tcp::endpoint(tcp::v4(), port_dn)}
 {
@@ -74,14 +74,14 @@ void trane::ServerProxy<Proto, BufSize>::listen()
 
 
 template<typename Proto, size_t BufSize>
-unsigned short trane::ServerProxy<Proto, BufSize>::port_up() const
+uint16_t trane::ServerProxy<Proto, BufSize>::port_up() const
 {
     return m_port_up;
 }
 
 
 template<typename Proto, size_t BufSize>
-unsigned short trane::ServerProxy<Proto, BufSize>::port_dn() const
+uint16_t trane::ServerProxy<Proto, BufSize>::port_dn() const
 {
     return m_port_dn;
 }

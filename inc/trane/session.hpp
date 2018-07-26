@@ -25,7 +25,7 @@ namespace trane
     public:
         Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler error_handler);
         void start();
-        void create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, unsigned short client_port);
+        void create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, uint16_t client_port);
 
     protected:
         /*
@@ -59,13 +59,13 @@ namespace trane
 template<size_t BufSize>
 std::shared_ptr<trane::ServerProxy<tcp, BufSize>> trane::Session<BufSize>::gen_tcp_tunnel(uint64_t& id, int max_retries)
 {
-    unsigned short port1 = 0, port2 = 0;
+    uint16_t port1 = 0, port2 = 0;
 
     for(int i = 0; i < max_retries; ++i)
     {
         auto& random = m_tcp_tunnels.random();
-        port1 = port1 ? port1 : random.template randrange<unsigned short>(TRANE_ADMIN_PORT_BEGIN, TRANE_ADMIN_PORT_END);
-        port2 = port2 ? port2 : random.template randrange<unsigned short>(TRANE_CLIENT_PORT_BEGIN, TRANE_CLIENT_PORT_END);
+        port1 = port1 ? port1 : random.template randrange<uint16_t>(TRANE_ADMIN_PORT_BEGIN, TRANE_ADMIN_PORT_END);
+        port2 = port2 ? port2 : random.template randrange<uint16_t>(TRANE_CLIENT_PORT_BEGIN, TRANE_CLIENT_PORT_END);
         try
         {
             auto tunnel = std::make_shared<trane::ServerProxy<tcp, BufSize>>(this->m_ios, port1, port2);
@@ -89,13 +89,13 @@ std::shared_ptr<trane::ServerProxy<tcp, BufSize>> trane::Session<BufSize>::gen_t
 
 
         /*
-         * void send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
-                                 const std::string& host_client, unsigned short port_client,
+         * void send_cmd_tunnel_req(const std::string& host_server, uint16_t port_server,
+                                 const std::string& host_client, uint16_t port_client,
                                  unsigned char trane_type, uint64_t tunnelid);
          */
 
 template<size_t BufSize>
-void trane::Session<BufSize>::create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, unsigned short client_port)
+void trane::Session<BufSize>::create_tunnel(const asio::ip::address& trane_server, TraneType trane_type, const std::string& client_host, uint16_t client_port)
 {
     if(trane_type == TraneType::TCP)
     {

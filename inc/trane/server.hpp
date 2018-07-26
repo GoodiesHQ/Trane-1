@@ -23,7 +23,7 @@ namespace trane
     class Server
     {
     public:
-        Server(asio::io_service& ios, unsigned short port);
+        Server(asio::io_service& ios, uint16_t port);
         std::shared_ptr<Session<BufSize>> gen_session();
         const Container<Session<BufSize>>& sessions() const;
         void listen();
@@ -36,7 +36,7 @@ namespace trane
         void delete_session(std::uint64_t sessionid);
 
         // constructor initialization list
-        unsigned short m_port;
+        uint16_t m_port;
         asio::io_service& m_ios;
         tcp::acceptor m_acceptor;
 
@@ -61,7 +61,7 @@ void trane::Server<BufSize>::listen()
 }
 
 template<size_t BufSize>
-trane::Server<BufSize>::Server(asio::io_service& ios, unsigned short port)
+trane::Server<BufSize>::Server(asio::io_service& ios, uint16_t port)
     : m_port{port}, m_ios{ios}, m_acceptor{ios, tcp::endpoint(tcp::v4(), port)}
 {
     LOG(VERBOSE) << "Server Constructor";

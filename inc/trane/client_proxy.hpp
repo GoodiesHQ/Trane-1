@@ -10,7 +10,7 @@ namespace trane
     class ClientProxy : public Proxy<Proto, BufSize>
     {
     public:
-        ClientProxy(asio::io_service& ios, const tcp::endpoint& trane_server, const std::string& host, unsigned short port);
+        ClientProxy(asio::io_service& ios, const tcp::endpoint& trane_server, const std::string& host, uint16_t port);
 
         // override the default... need to ensure the client is connected on first read
         void handle_up_read(const asio::error_code& err, size_t bytes_transferred);
@@ -27,7 +27,7 @@ namespace trane
         bool m_connected_up{false}, m_connected_dn{false};
         tcp::endpoint m_trane_server;
         std::string m_host;
-        unsigned short m_port;
+        uint16_t m_port;
         trane::Resolver<Proto> m_resolver;
     };
 
@@ -129,7 +129,7 @@ void trane::ClientProxy<Proto, BufSize>::handle_up_read(const asio::error_code& 
 
 
 template<typename Proto, size_t BufSize>
-trane::ClientProxy<Proto, BufSize>::ClientProxy(asio::io_service& ios, const tcp::endpoint& trane_server, const std::string& host, unsigned short port)
+trane::ClientProxy<Proto, BufSize>::ClientProxy(asio::io_service& ios, const tcp::endpoint& trane_server, const std::string& host, uint16_t port)
     : Proxy<Proto, BufSize>::Proxy(ios), m_trane_server{trane_server}, m_host{host}, m_port{port}, m_resolver{ios}
 {
     LOG(VERBOSE);

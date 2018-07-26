@@ -53,8 +53,8 @@ namespace trane
         void send_cmd_assign(uint64_t sessionid);
         void send_cmd_ping(const std::string& message);
         void send_cmd_pong(const std::string& message);
-        void send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
-                                 const std::string& host_client, unsigned short port_client,
+        void send_cmd_tunnel_req(const std::string& host_server, uint16_t port_server,
+                                 const std::string& host_client, uint16_t port_client,
                                  unsigned char trane_type, uint64_t tunnelid);
         void send_cmd_tunnel_res(uint64_t tunnelid, bool success, const std::string& message);
 
@@ -277,8 +277,8 @@ void trane::Connection<BufSize>::send_cmd_pong(const std::string& message) {
 }
 
 template<size_t BufSize>
-void trane::Connection<BufSize>::send_cmd_tunnel_req(const std::string& host_server, unsigned short port_server,
-                                                     const std::string& host_client, unsigned short port_client,
+void trane::Connection<BufSize>::send_cmd_tunnel_req(const std::string& host_server, uint16_t port_server,
+                                                     const std::string& host_client, uint16_t port_client,
                                                      unsigned char trane_type, uint64_t tunnelid)
 {
     this->send_cmd(cmd_tunnel_req, host_server, port_server, host_client, port_client, trane_type, tunnelid);

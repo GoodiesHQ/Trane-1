@@ -77,8 +77,8 @@ namespace trane{
 
 
     void cmd_tunnel_req(msgpack::sbuffer& buf,
-                        const std::string& host_server, unsigned short port_server,
-                        const std::string& host_client, unsigned short port_client,
+                        const std::string& host_server, uint16_t port_server,
+                        const std::string& host_client, uint16_t port_client,
                         unsigned char trane_type, uint64_t tunnelid)
     {
         create_command(TUNNEL_REQ, buf, host_server, port_server, host_client, port_client, trane_type, tunnelid);
