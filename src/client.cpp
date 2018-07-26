@@ -1,3 +1,4 @@
+#ifdef TRANE_CLIENT
 #include "../inc/trane/client.hpp"
 
 #include <string>
@@ -52,3 +53,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#endif
