@@ -4,6 +4,7 @@
 #include "random.hpp"
 #include "utils.hpp"
 
+#include <iostream>
 #include <unordered_map>
 #include <memory>
 #include <mutex>
@@ -19,7 +20,6 @@ namespace trane
         std::unordered_map<uint64_t, std::shared_ptr<T>>& entries();
         const std::unordered_map<uint64_t, std::shared_ptr<T>>& entries() const;
         trane::Random<std::mt19937_64>& random();
-
 
         uint64_t add(std::shared_ptr<T>& ptr);
         std::shared_ptr<T> get(uint64_t id);
@@ -69,7 +69,7 @@ uint64_t trane::Container<T>::add(std::shared_ptr<T>& ptr)
     do
     {
         id = this->m_random.gen();
-    }while(m_entries.find(id) == m_entries.end());
+    }while(m_entries.find(id) != m_entries.end());
     m_entries[id] = ptr;
     return id;
 }

@@ -1,6 +1,5 @@
 #ifndef TRANE_SESSION_HPP
 #define TRANE_SESSION_HPP
-
 #include "asio_standalone.hpp"
 #include "commands.hpp"
 #include "connection.hpp"
@@ -9,8 +8,6 @@
 
 #include <random>
 #include <msgpack.hpp>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <functional>
 #include <array>
 #include <iostream>
@@ -74,16 +71,19 @@ std::shared_ptr<trane::ServerProxy<tcp, BufSize>> trane::Session<BufSize>::gen_t
             auto tunnel = std::make_shared<trane::ServerProxy<tcp, BufSize>>(this->m_ios, port1, port2);
             id = m_tcp_tunnels.add(tunnel);
             tunnel->set_tunnelid(id);
+            tunnel->listen();
             return tunnel;
         }
         catch(asio::system_error& err)
         {
             // TODO: determine offending port so we don't re-generate both.
+            LOG(WARNING) << "regenerating ports";
             port1 = 0;
             port2 = 0;
             continue;
         }
     }
+    LOG(ERROR) << "could not find open ports";
     return nullptr;
 }
 
@@ -103,7 +103,6 @@ void trane::Session<BufSize>::create_tunnel(const asio::ip::address& trane_serve
         auto tunnel = this->gen_tcp_tunnel(tunnelid);
         if(tunnel == nullptr)
         {
-            std::cerr << "Could not create TCP tunnel\n";
             return;
         }
         this->send_cmd_tunnel_req(trane_server.to_string(), tunnel->port_up(), client_host, client_port, static_cast<unsigned char>(trane_type), tunnelid);
@@ -116,9 +115,9 @@ void trane::Session<BufSize>::handle_cmd_connect(const msgpack::object& obj)
 {
     ParamConnect param;
     obj.convert(param);
-
     this->set_state(CONNECTED);
-    std::cout << "Server Accepts Site '" << P0(param) << "'. Assigning ID " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid << '\n';
+
+    LOG(SUCCESS) << "Site " << P0(param) << " joined with ID " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid;
     this->send_cmd_assign(this->m_sessionid);
 }
 
@@ -130,7 +129,7 @@ void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
     obj.convert(param);
     auto& ping = P0(param);
 
-    std::cout << "Server Received PING(" << ping << ")\n";
+    LOG(DEBUG) << "Received PING(\"" << ping << "\")";
     this->send_cmd_pong("PONG");
 }
 
@@ -138,12 +137,15 @@ void trane::Session<BufSize>::handle_cmd_ping(const msgpack::object& obj)
 template<size_t BufSize>
 trane::Session<BufSize>::Session(asio::io_service& ios, uint64_t sessionid, ErrorHandler eh)
     : Connection<BufSize>(ios, sessionid, eh)
-{ }
+{
+    LOG(VERBOSE);
+}
 
 
 template<size_t BufSize>
 void trane::Session<BufSize>::start()
 {
+    LOG(DEBUG) << "starting session";
     this->do_read();
 };
 

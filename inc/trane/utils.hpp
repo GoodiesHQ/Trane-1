@@ -4,6 +4,7 @@
 #include <mutex>
 #include <chrono>
 
+#include "logging.hpp"
 #include "msgpack.hpp"
 
 #define SCOPELOCK(mu) std::lock_guard<std::mutex> __lock(mu)

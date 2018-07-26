@@ -1,6 +1,7 @@
 #ifndef ASIO_SERVER_PROXY_HPP
 #define ASIO_SERVER_PROXY_HPP
 
+#include "logging.hpp"
 #include "proxy.hpp"
 #include <functional>
 
@@ -19,6 +20,7 @@ namespace trane
     public:
         // All we need are two ports. One for the admin (dn) and the ClientProxy (up)
         ServerProxy(asio::io_service& ios, unsigned short port_dn, unsigned short port_up);
+        ~ServerProxy();
         virtual void listen();
 
         unsigned short port_up() const;
@@ -44,14 +46,24 @@ namespace trane
 
 template<typename Proto, size_t BufSize>
 trane::ServerProxy<Proto, BufSize>::ServerProxy(asio::io_service& ios, unsigned short port_dn, unsigned short port_up)
-    : trane::Proxy<Proto, BufSize>::Proxy(ios), m_port_dn{port_dn}, m_port_up{port_up}, m_acc_up{ios}, m_acc_dn{ios}
-{}
+    : trane::Proxy<Proto, BufSize>::Proxy(ios), m_port_dn{port_dn}, m_port_up{port_up},
+    m_acc_up{ios, tcp::endpoint(tcp::v4(), port_up)}, m_acc_dn{ios, tcp::endpoint(tcp::v4(), port_dn)}
+{
+    LOG(VERBOSE);
+}
+
+
+template<typename Proto, size_t BufSize>
+trane::ServerProxy<Proto, BufSize>::~ServerProxy()
+{
+    LOG(VERBOSE);
+}
 
 
 template<typename Proto, size_t BufSize>
 void trane::ServerProxy<Proto, BufSize>::listen()
 {
-    std::cout << "Awaiting Trane Tunnel Connection on Port" << m_port_up << std::endl;
+    LOG(INFO) << "Listening for trane tunnel on 0.0.0.0:" << std::dec << m_port_up;
     m_acc_up.async_accept(this->m_sock_up,
         [this](const asio::error_code& err)
         {
@@ -80,12 +92,13 @@ void trane::ServerProxy<Proto, BufSize>::handle_up_accept(const asio::error_code
 {
     if(err)
     {
-        std::cout << "Upstream Accept Failure\n";
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(DEBUG) << "Connected";
     if(std::is_same<Proto, tcp>::value)
     {
-        std::cout << "Waiting for connection on port " << std::dec << m_port_dn << "...\n";
+        LOG(INFO) << "Listening for admin traffic on 0.0.0.0:" << std::dec << m_port_dn;
         m_acc_dn.async_accept(this->m_sock_dn,
             [this](const asio::error_code& err)
             {
@@ -104,7 +117,7 @@ void trane::ServerProxy<Proto, BufSize>::handle_dn_accept(const asio::error_code
 {
     if(err)
     {
-        std::cout << "Downstream Accept Failure\n";
+        LOG(ERROR) << err.message();
         return;
     }
     this->do_up_read();

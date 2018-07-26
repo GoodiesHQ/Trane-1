@@ -56,7 +56,7 @@ void trane::Client<BufSize>::handle_cmd_assign(const msgpack::object& obj)
     obj.convert(param);
 
     this->set_sessionid(std::get<0>(param));
-    std::cout << "Client received ID " << std::setfill('0') << std::setw(16) << std::hex << this->sessionid() << '\n';
+    LOG(DEBUG) << "Client received " << std::setfill('0') << std::setw(16) << std::hex << this->m_sessionid;
     this->send_cmd_ping("PING");
 }
 
@@ -69,7 +69,7 @@ void trane::Client<BufSize>::handle_cmd_pong(const msgpack::object& obj)
 
     auto& pong = std::get<0>(param);
 
-    std::cout << "Client received PONG(" << pong << ")\n";
+    LOG(DEBUG) << "Client received PONG(\"" << pong << "\")";
 
     m_heartbeat_timer.expires_after(SEC(10));
     m_heartbeat_timer.async_wait(
@@ -97,16 +97,16 @@ void trane::Client<BufSize>::handle_cmd_tunnel_req(const msgpack::object& obj)
     obj.convert(param);
 
     if(P4(param) == TraneType::TCP)
-        {
-    std::cout << "Creating connection to " << P0(param) << ':' << P1(param)
-        << " proxying to " << P2(param) << ':' << P3(param)
-        << " with ID " << std::setw(16) << std::setfill('0') << std::hex << P4(param) << std::endl;
-
+    {
         auto trane_server = tcp::endpoint(asio::ip::address::from_string(P0(param)), P1(param));
         auto tunnel = std::make_shared<ClientProxy<tcp, BufSize>>(this->m_ios, trane_server, P2(param), P3(param));
         uint64_t id = m_tcp_tunnels.add(tunnel);
         tunnel->set_tunnelid(id);
         tunnel->set_sessionid(this->m_sessionid);
+
+        LOG(DEBUG) << "Up: " << P0(param) << ':' << P1(param) << " ~ Down: " << P2(param) << ':' << P3(param)
+            << " with ID " << std::setfill('0') << std::setw(16) << std::hex << P5(param);
+
         tunnel->start();
     }
 }

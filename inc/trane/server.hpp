@@ -7,11 +7,12 @@
 #include <iostream>
 #include <iomanip>
 
+#include "session.hpp"
 #include "container.hpp"
 #include "random.hpp"
 #include "asio_standalone.hpp"
-#include "session.hpp"
 #include "server_proxy.hpp"
+#include "logging.hpp"
 
 namespace trane
 {
@@ -25,6 +26,7 @@ namespace trane
         Server(asio::io_service& ios, unsigned short port);
         std::shared_ptr<Session<BufSize>> gen_session();
         const Container<Session<BufSize>>& sessions() const;
+        void listen();
 
     protected:
         void do_accept();
@@ -51,18 +53,25 @@ const trane::Container<trane::Session<BufSize>>& trane::Server<BufSize>::session
     return m_sessions;
 }
 
+
+template<size_t BufSize>
+void trane::Server<BufSize>::listen()
+{
+    this->do_accept();
+}
+
 template<size_t BufSize>
 trane::Server<BufSize>::Server(asio::io_service& ios, unsigned short port)
     : m_port{port}, m_ios{ios}, m_acceptor{ios, tcp::endpoint(tcp::v4(), port)}
 {
-    this->do_accept();
+    LOG(VERBOSE) << "Server Constructor";
 }
 
 
 template<size_t BufSize>
 void trane::Server<BufSize>::do_accept()
 {
-    std::cout << "Accepted\n";
+    LOG(INFO) << "Creating a new session";
     auto new_session = gen_session();
 
     // create a new session and set the current function as the next callback for the next accept() call
@@ -96,16 +105,16 @@ void trane::Server<BufSize>::handle_accept(std::shared_ptr<trane::Session<BufSiz
 {
     if(err)
     {
-        // TODO: improve debugging
-        std::cerr << "Server Accept Error: " << err.message() << '\n';
+        // TODO: improve error handling
+        LOG(ERROR) << "Accept Error: " << err.message();
         return;
     }
 
     // if the session is valid start the session.
     if(session != nullptr)
     {
-        std::cout << "Starting Session...\n";
         session->start();
+        LOG(DEBUG) << "Staring Session";
     }
     this->do_accept();
 }
@@ -114,6 +123,7 @@ void trane::Server<BufSize>::handle_accept(std::shared_ptr<trane::Session<BufSiz
 template<size_t BufSize>
 void trane::Server<BufSize>::delete_session(uint64_t sessionid)
 {
+    LOG(WARNING) << "deleting session " << std::dec << sessionid;
     m_sessions.del(sessionid);
 }
 

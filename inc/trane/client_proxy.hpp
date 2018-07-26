@@ -46,6 +46,7 @@ void trane::ClientProxy<Proto, BufSize>::start()
 template<typename Proto, size_t BufSize>
 void trane::ClientProxy<Proto, BufSize>::do_up_connect()
 {
+    LOG(DEBUG) << "connecting";
     this->m_sock_up.async_connect(m_trane_server,
         [this](const asio::error_code& err){
             this->handle_up_connect(err);
@@ -64,7 +65,7 @@ void trane::ClientProxy<Proto, BufSize>::do_dn_connect(size_t bytes_transferred)
             {
                 if(err)
                 {
-                    std::cerr << "ClientProxy resolution error\n";
+                    LOG(ERROR) << err.message();
                     return;
                 }
                 this->m_sock_dn.async_connect(*endpoints,
@@ -84,10 +85,12 @@ void trane::ClientProxy<Proto, BufSize>::handle_up_connect(const asio::error_cod
 {
     if(err)
     {
-        std::cerr << "ClientProxy Connect Error\n";
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(SUCCESS) << "Connected to ServerProxy";
     this->m_connected_up = true;
+    this->do_up_read();
 }
 
 
@@ -96,11 +99,12 @@ void trane::ClientProxy<Proto, BufSize>::handle_dn_connect(size_t bytes_transfer
 {
     if(err)
     {
-        std::cerr << "ClientProxy Connect Error\n";
+        LOG(ERROR) << err.message();
         return;
     }
     this->m_connected_dn = true;
     this->do_dn_write(bytes_transferred);
+    this->do_dn_read();
 }
 
 
@@ -109,9 +113,10 @@ void trane::ClientProxy<Proto, BufSize>::handle_up_read(const asio::error_code& 
 {
     if(err)
     {
-        std::cerr << "ClientProxy Upstream Read Error: " << err.message() << std::endl;
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(DEBUG) << "received " << std::dec << bytes_transferred ;
     if(!m_connected_dn)
     {
         this->do_dn_connect(bytes_transferred);
@@ -126,6 +131,8 @@ void trane::ClientProxy<Proto, BufSize>::handle_up_read(const asio::error_code& 
 template<typename Proto, size_t BufSize>
 trane::ClientProxy<Proto, BufSize>::ClientProxy(asio::io_service& ios, const tcp::endpoint& trane_server, const std::string& host, unsigned short port)
     : Proxy<Proto, BufSize>::Proxy(ios), m_trane_server{trane_server}, m_host{host}, m_port{port}, m_resolver{ios}
-{ }
+{
+    LOG(VERBOSE);
+}
 
 #endif

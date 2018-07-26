@@ -4,6 +4,13 @@
 #include <memory>
 #include <unordered_map>
 
+#ifdef NO_TLS
+#include <websocketpp/config/asio_no_tls.hpp>
+#else
+#include <websocketpp/config/asio.hpp>
+#endif
+#include <websocketpp/server.hpp>
+
 #include "asio_standalone.hpp"
 #include "proxy.hpp"
 #include "server.hpp"
@@ -11,14 +18,11 @@
 
 namespace trane
 {
-    template<size_t BufSize>
     class Manager
     {
-        typedef uint64_t SessionID;
-        typedef uint64_t TunnelID;
 
     public:
-        Manager(asio::io_service& ios);
+        Manager();
 
     protected:
         asio::io_service& m_ios;

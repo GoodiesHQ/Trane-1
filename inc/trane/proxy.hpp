@@ -5,6 +5,7 @@
 #include <array>
 #include "asio_standalone.hpp"
 #include "utils.hpp"
+#include "logging.hpp"
 
 namespace trane
 {
@@ -15,6 +16,7 @@ namespace trane
 
     public:
         Proxy(asio::io_service& ios);
+        ~Proxy();
 
         /*
          * setters and getters for tunnel ID and session ID
@@ -64,7 +66,16 @@ namespace trane
 template<typename Proto, size_t BufSize>
 trane::Proxy<Proto, BufSize>::Proxy(asio::io_service& ios)
     : m_ios{ios}, m_sock_up(ios), m_sock_dn{ios}
-{}
+{
+    LOG(VERBOSE);
+}
+
+
+template<typename Proto, size_t BufSize>
+trane::Proxy<Proto, BufSize>::~Proxy()
+{
+    LOG(VERBOSE) << "DESTROYED";
+}
 
 
 template<typename Proto, size_t BufSize>
@@ -98,8 +109,10 @@ uint64_t trane::Proxy<Proto, BufSize>::tunnelid() const
 template<typename Proto, size_t BufSize>
 void trane::Proxy<Proto, BufSize>::do_up_read()
 {
+    LOG(DEBUG) << "reading upstream";
     m_sock_up.async_read_some(asio::buffer(m_buf_up.data(), BufSize),
         [this](const asio::error_code& err, size_t bytes_transferred){
+            LOG(DEBUG) << "up read";
             this->handle_up_read(err, bytes_transferred);
         }
     );
@@ -109,10 +122,12 @@ void trane::Proxy<Proto, BufSize>::do_up_read()
 template<typename Proto, size_t BufSize>
 void trane::Proxy<Proto, BufSize>::do_dn_read()
 {
+    LOG(DEBUG) << "reading downstream";
     if(std::is_same<Proto, tcp>::value)
     {
         m_sock_dn.async_read_some(asio::buffer(m_buf_dn.data(), BufSize),
             [this](const asio::error_code& err, size_t bytes_transferred){
+                LOG(DEBUG) << "dn read";
                 this->handle_dn_read(err, bytes_transferred);
             }
         );
@@ -126,6 +141,7 @@ void trane::Proxy<Proto, BufSize>::do_dn_read()
 template<typename Proto, size_t BufSize>
 void trane::Proxy<Proto, BufSize>::do_up_write(size_t bytes_transferred)
 {
+    LOG(DEBUG) << "writing upstream";
     asio::async_write(m_sock_up, asio::buffer(m_buf_dn.data(), bytes_transferred),
         [this](const asio::error_code& err, size_t bytes_transferred)
         {
@@ -138,6 +154,7 @@ void trane::Proxy<Proto, BufSize>::do_up_write(size_t bytes_transferred)
 template<typename Proto, size_t BufSize>
 void trane::Proxy<Proto, BufSize>::do_dn_write(size_t bytes_transferred)
 {
+    LOG(DEBUG) << "writing downstream";
     if(std::is_same<Proto, tcp>::value)
     {
         asio::async_write(m_sock_dn, asio::buffer(m_buf_up.data(), bytes_transferred),
@@ -157,9 +174,10 @@ void trane::Proxy<Proto, BufSize>::handle_up_read(const asio::error_code& err, s
 {
     if(err)
     {
-        std::cerr << "Upstream Read Error: " << err.message() << std::endl;
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(DEBUG) << "received " << std::dec << bytes_transferred << " from upstream";
     this->do_dn_write(bytes_transferred);
 }
 
@@ -169,9 +187,10 @@ void trane::Proxy<Proto, BufSize>::handle_dn_read(const asio::error_code& err, s
 {
     if(err)
     {
-        std::cerr << "Upstream Read Error: " << err.message() << std::endl;
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(DEBUG) << "received " << std::dec << bytes_transferred << " from downstream";
     this->do_up_write(bytes_transferred);
 }
 
@@ -181,9 +200,10 @@ void trane::Proxy<Proto, BufSize>::handle_up_write(const asio::error_code& err, 
 {
     if(err)
     {
-        std::cerr << "Upstream Write Error: " << err.message() << std::endl;
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(INFO) << "sent " << std::dec << bytes_transferred << " bytes upstream";
     NOP(bytes_transferred);
     this->do_dn_read();
 }
@@ -194,9 +214,10 @@ void trane::Proxy<Proto, BufSize>::handle_dn_write(const asio::error_code& err, 
 {
     if(err)
     {
-        std::cerr << "Downstream Write Error: " << err.message() << std::endl;
+        LOG(ERROR) << err.message();
         return;
     }
+    LOG(INFO) << "sent " << std::dec << bytes_transferred << " bytes downstream";
     NOP(bytes_transferred);
     this->do_up_read();
 }
