@@ -1,10 +1,11 @@
-#include "../inc/trane.hpp"
+#include "../inc/trane/client.hpp"
 
 #include <string>
 #include <sstream>
 
 
 const int RECONNECT_INTERVAL = 3;
+LogLevel LOGLEVEL = VERBOSE;
 
 
 void onerror(uint64_t sessionid)

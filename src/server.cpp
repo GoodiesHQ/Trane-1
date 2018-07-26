@@ -1,15 +1,18 @@
-#include "../inc/trane.hpp"
+#include "../inc/trane/server.hpp"
+
+LogLevel LOGLEVEL = VERBOSE;
+
 
 template<size_t BufSize>
 void foo(const trane::Server<BufSize>& server)
 {
     const auto& sessions = server.sessions();
-    std::for_each(sessions.entries().begin(), sessions.entries().end(), [](const std::pair<unsigned int, std::shared_ptr<trane::Session<>>>& entry){
+    std::for_each(sessions.entries().begin(), sessions.entries().end(), [](const std::pair<uint64_t, std::shared_ptr<trane::Session<>>>& entry){
         if(entry.second->state() == trane::ConnectionState::CONNECTED)
         {
             std::cout << "Session " << std::setw(16) << std::setfill('0') << std::hex << entry.first << ":\n";
             auto trane_server = asio::ip::address::from_string("127.0.0.1");
-            entry.second->create_tunnel(trane_server, trane::TraneType::TCP, "localhost", 22);
+            entry.second->create_tunnel(trane_server, trane::TraneType::TCP, "box", 22);
         }
     });
 }
@@ -26,11 +29,9 @@ int main(int argc, char **argv)
     }
 
     asio::io_service ios;
-    std::cout << "A\n";
     trane::Server<TRANE_BUFSIZE> server(ios, port);
-    std::cout << "B\n";
-
-    std::cout << "Starting Trane Server on 0.0.0.0:" << port << "\n";
+    server.listen();
+    LOG(DEBUG) << "Starting Server on 0.0.0.0:" << port;
 
     std::thread t([&ios]{
         ios.run();
@@ -38,7 +39,6 @@ int main(int argc, char **argv)
 
     while(1)
     {
-        std::cout << "Press enter to create tunnel requests.";
         std::cout.flush();
         std::cin.ignore();
         foo(server);
