@@ -4,6 +4,9 @@
 #include <sstream>
 #include <iostream>
 
+#ifdef ERROR
+#undef ERROR
+#endif
 enum LogLevel
 {
     ERROR,
