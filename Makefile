@@ -15,10 +15,10 @@ obj: client server
 	@echo "Compile Complete"
 
 client: $(SOURCES_CLIENT)
-	$(CXX) $(SOURCES_CLIENT) $(CPPFLAGS) -o $(TARGET)_client
+	$(CXX) -DTRANE_CLIENT $(SOURCES_CLIENT) $(CPPFLAGS) -o $(TARGET)_client
 
 server: $(SOURCES_SERVER)
-	$(CXX) $(SOURCES_SERVER) $(CPPFLAGS) -o $(TARGET)_server
+	$(CXX) -DTRANE_SERVER $(SOURCES_SERVER) $(CPPFLAGS) -o $(TARGET)_server
 
 # clean:
 # @echo "Clean Complete"
